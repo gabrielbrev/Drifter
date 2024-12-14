@@ -1,0 +1,22 @@
+# Ignorar arquivos Python gerados
+*.pyc
+*.pyo
+__pycache__/
+
+# Ambiente virtual
+.venv/
+
+# Arquivos de configuração do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Outros arquivos desnecessários
+*.log
+*.tmp
+*.swp
+*.bak
+*.orig
+
+# Dependências geradas automaticamente
+*.egg-info/
+*.dist-info/
