@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
@@ -8,7 +9,6 @@ class FuzzyController:
         # Definindo as variáveis de entrada
         self.curva = ctrl.Antecedent(np.arange(-180, 181, 1), 'curva')
         self.distancia_parede = ctrl.Antecedent(np.arange(0, 1440, 1), 'distancia_parede')  # Agora o universo é maior que 200
-        self.distancia_objetivo = ctrl.Antecedent(np.arange(0, 1440, 1), 'distancia_objetivo')
 
         # Definindo as variáveis de saída
         self.virar = ctrl.Consequent(np.arange(-1, 1.1, 0.5), 'virar')  # Comando de virar agora é -1, 0 ou 1
@@ -24,9 +24,6 @@ class FuzzyController:
         self.distancia_parede['perto'] = fuzz.trapmf(self.distancia_parede.universe, [0, 0, 75, 100])
         self.distancia_parede['medio'] = fuzz.trimf(self.distancia_parede.universe, [75, 100, 150])
         self.distancia_parede['longe'] = fuzz.trapmf(self.distancia_parede.universe, [100, 150, np.inf, np.inf])
-
-        self.distancia_objetivo['perto'] = fuzz.trapmf(self.distancia_objetivo.universe, [0, 0, 10, 30])
-        self.distancia_objetivo['longe'] = fuzz.trapmf(self.distancia_objetivo.universe, [20, 50, np.inf, np.inf])
 
         # Funções de pertinência para a variável de entrada "curva"
         self.curva['fechada_esq'] = fuzz.trapmf(self.curva.universe, [-180, -180, -120, -45])
@@ -52,10 +49,6 @@ class FuzzyController:
         """Define as regras fuzzy para controlar a lógica."""
         # Regras para controle de virar
         self.rules_virar = [
-            # ctrl.Rule(self.curva['fechada_esq'] | self.curva['media_esq'], self.virar['esquerda']),
-            # ctrl.Rule(self.curva['aberta_esq'] | self.curva['aberta_dir'], self.virar['manter']),
-            # ctrl.Rule(self.curva['fechada_dir'] | self.curva['media_dir'], self.virar['direita']),
-
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['perto'], self.virar['esquerda']),
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['medio'], self.virar['esquerda']),
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['longe'], self.virar['esquerda']),
@@ -83,27 +76,6 @@ class FuzzyController:
 
         # Regras para controle de velocidade
         self.rules_velocidade = [
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['perto'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['longe'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['perto'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['longe'], self.velocidade['frear_medio']),
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['perto'], self.velocidade['frear_pouco']),
-            # ctrl.Rule((self.curva['fechada_esq'] | self.curva['fechada_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['longe'], self.velocidade['manter']),
-
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['perto'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['longe'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['perto'], self.velocidade['frear_pouco']),
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['longe'], self.velocidade['frear_medio']),
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['perto'], self.velocidade['frear_pouco']),
-            # ctrl.Rule((self.curva['media_esq'] | self.curva['media_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['longe'], self.velocidade['manter']),
-
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['perto'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['perto'] & self.distancia_objetivo['longe'], self.velocidade['frear_muito']),
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['perto'], self.velocidade['frear_pouco']),
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['medio'] & self.distancia_objetivo['longe'], self.velocidade['acelerar']),
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['perto'], self.velocidade['frear_pouco']),
-            # ctrl.Rule((self.curva['aberta_esq'] | self.curva['aberta_dir']) & self.distancia_parede['longe'] & self.distancia_objetivo['longe'], self.velocidade['acelerar']),
-
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['perto'], self.velocidade['frear_muito']),
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['medio'], self.velocidade['frear_medio']),
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_parede['longe'], self.velocidade['frear_medio']),
@@ -137,17 +109,18 @@ class FuzzyController:
         self.virar_sim = ctrl.ControlSystemSimulation(self.virar_ctrl)
         self.velocidade_sim = ctrl.ControlSystemSimulation(self.velocidade_ctrl)
 
-    def compute(self, curva_input, distancia_input, gerar_relatorio=False):
+    def compute(self, curva_input, distancia_parede_input, gerar_relatorio=False):
         """Calcula as saídas fuzzy com base nos valores de entrada e gera um relatório se solicitado."""
         
         # Processar a variável de saída "virar"
         self.virar_sim.input['curva'] = curva_input
+        self.virar_sim.input['distancia_parede'] = distancia_parede_input
         self.virar_sim.compute()
         virar_output = self.virar_sim.output['virar']
     
         # Processar a variável de saída "velocidade"
         self.velocidade_sim.input['curva'] = curva_input
-        self.velocidade_sim.input['distancia'] = distancia_input
+        self.velocidade_sim.input['distancia_parede'] = distancia_parede_input
         self.velocidade_sim.compute()
         velocidade_output = self.velocidade_sim.output['velocidade']
     
@@ -155,7 +128,7 @@ class FuzzyController:
         if gerar_relatorio:
             self._gerar_relatorio(
                 curva_input=curva_input, 
-                distancia_input=distancia_input, 
+                distancia_parede_input=distancia_parede_input, 
                 virar_output=virar_output, 
                 velocidade_output=velocidade_output
             )
@@ -166,7 +139,7 @@ class FuzzyController:
             'velocidade': velocidade_output
         }
     
-    def _gerar_relatorio(self, curva_input, distancia_input, virar_output, velocidade_output):
+    def _gerar_relatorio(self, curva_input, distancia_parede_input, virar_output, velocidade_output):
         """Gera um relatório detalhado com valores de entrada, pertinência e saídas."""
         # Criação do relatório como string
         relatorio = f"""
@@ -174,7 +147,7 @@ class FuzzyController:
         ===========================
         Entradas:
             Curva: {curva_input}
-            Distância: {distancia_input}
+            Distância: {distancia_parede_input}
         
         Saídas:
             Virar: {virar_output} (Ação: {'Esquerda' if virar_output < 0 else 'Direita' if virar_output > 0 else 'Manter'})
@@ -189,54 +162,48 @@ class FuzzyController:
                 Média Dir: {fuzz.interp_membership(self.curva.universe, self.curva['media_dir'].mf, curva_input):.2f}
                 Fechada Dir: {fuzz.interp_membership(self.curva.universe, self.curva['fechada_dir'].mf, curva_input):.2f}
     
-            Distância:
-                Perto: {fuzz.interp_membership(self.distancia.universe, self.distancia['perto'].mf, distancia_input):.2f}
-                Médio: {fuzz.interp_membership(self.distancia.universe, self.distancia['medio'].mf, distancia_input):.2f}
-                Longe: {fuzz.interp_membership(self.distancia.universe, self.distancia['longe'].mf, distancia_input):.2f}
+            Distância da parede:
+                Perto: {fuzz.interp_membership(self.distancia_parede.universe, self.distancia_parede['perto'].mf, distancia_parede_input):.2f}
+                Médio: {fuzz.interp_membership(self.distancia_parede.universe, self.distancia_parede['medio'].mf, distancia_parede_input):.2f}
+                Longe: {fuzz.interp_membership(self.distancia_parede.universe, self.distancia_parede['longe'].mf, distancia_parede_input):.2f}
     
         """
     
         # Salvar relatório em arquivo de texto
-        with open("relatorio_fuzzy.txt", "w") as file:
+        os.makedirs('output', exist_ok=True)
+        with open("output/relatorio_fuzzy.txt", "w") as file:
             file.write(relatorio)
     
         print("[INFO] Relatório gerado: relatorio_fuzzy.txt")
     
         # Visualizar gráficos (opcional)
-        self._gerar_graficos(curva_input, distancia_input)
+        self._gerar_graficos(curva_input, distancia_parede_input)
     
-    def _gerar_graficos(self, curva_input, distancia_input):
+    def _gerar_graficos(self, curva_input, distancia_parede_input):
         """Gera gráficos das funções de pertinência e resultados fuzzy."""
         # Gráfico de pertinência da entrada curva
         self.curva.view(sim=self.virar_sim)
         plt.title(f'Curva = {curva_input}')
-        plt.savefig('curva_fuzzy.png')
+        plt.savefig('output/curva_fuzzy.png')
     
         # Gráfico de pertinência da entrada distância
-        self.distancia.view(sim=self.velocidade_sim)
-        plt.title(f'Distância = {distancia_input}')
-        plt.savefig('distancia_fuzzy.png')
+        self.distancia_parede.view(sim=self.velocidade_sim)
+        plt.title(f'Distância da parede = {distancia_parede_input}')
+        plt.savefig('output/distancia_parede_fuzzy.png')
     
         # Gráfico de saída "virar"
         self.virar.view(sim=self.virar_sim)
         plt.title('Saída Fuzzy: Virar')
-        plt.savefig('virar_fuzzy.png')
+        plt.savefig('output/virar_fuzzy.png')
     
         # Gráfico de saída "velocidade"
         self.velocidade.view(sim=self.velocidade_sim)
         plt.title('Saída Fuzzy: Velocidade')
-        plt.savefig('velocidade_fuzzy.png')
+        plt.savefig('output/velocidade_fuzzy.png')
     
         print("[INFO] Gráficos salvos: curva_fuzzy.png, distancia_fuzzy.png, virar_fuzzy.png, velocidade_fuzzy.png")
 
 if __name__ == '__main__':
     fuzzy = FuzzyController()
-    fuzzy.curva.view()
-    fuzzy.distancia_parede.view()
-    fuzzy.velocidade.view()
-    fuzzy.virar.view()
 
-    plt.show()
-    resultado = fuzzy.compute(30, 70, 15)  # Entrada de exemplo: curva = 30, distancia_parede = 70
-    print(f"Comando para virar: {resultado['virar']}")
-    print(f"Delta de velocidade: {resultado['velocidade']:.2f}")
+    resultado = fuzzy.compute(30, 70, gerar_relatorio=True)  # Entrada de exemplo: curva = 30, distancia_parede = 70

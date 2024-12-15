@@ -7,10 +7,9 @@ controller = FuzzyController()
 
 while game.is_running():
     distancia_parede = game.get_distance_to_wall()
-    distancia_objetivo = game.get_target_distance()
     angulo = game.get_angle_to_target()
 
-    saidas = controller.compute(angulo, distancia_parede, distancia_objetivo)
+    saidas = controller.compute(angulo, distancia_parede)
 
     if saidas['virar'] > 0:
         game.rotate('right')

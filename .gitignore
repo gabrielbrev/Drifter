@@ -20,3 +20,5 @@ Thumbs.db
 # Dependências geradas automaticamente
 *.egg-info/
 *.dist-info/
+
+output/
