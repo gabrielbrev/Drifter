@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 class FuzzyController:
     def __init__(self):
         self.curva = ctrl.Antecedent(np.arange(-180, 181, 1), 'curva')
-        self.distancia_parede = ctrl.Antecedent(np.arange(0, 200, 1), 'distancia_parede')
+        self.distancia_parede = ctrl.Antecedent(np.arange(0, 1920, 1), 'distancia_parede')
 
         self.virar = ctrl.Consequent(np.arange(-1, 1.1, 0.5), 'virar')
         self.velocidade = ctrl.Consequent(np.arange(-2.5, 0.3, 0.01), 'velocidade')
@@ -166,6 +166,7 @@ class FuzzyController:
     
         self.distancia_parede.view(sim=self.velocidade_sim)
         plt.title(f'Distância da parede = {distancia_parede_input}')
+        plt.xlim(0, 200)
         plt.savefig('output/distancia_parede_fuzzy.png')
     
         self.virar.view(sim=self.virar_sim)
