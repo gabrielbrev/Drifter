@@ -83,33 +83,25 @@ class GameLoop:
             elif event.type == pygame.VIDEORESIZE:
                 self.WIDTH, self.HEIGHT = event.w, event.h
                 self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
+
                 self.player.update_boundaries(self.WIDTH, self.HEIGHT)
                 self.target.update_boundaries(self.WIDTH, self.HEIGHT)
+
                 self.bg = self.crop_bg()
+                self.dark_overlay = self.create_dark_overlay()
+
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_t:
                     self.target.cycle_mode()
+
                 elif event.key == pygame.K_d:
                     self.debug_mode = not self.debug_mode
+
                 elif event.key == pygame.K_f:
                     self.player.drift_mode = not self.player.drift_mode
+                    
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
-        
-        if __name__ == '__main__':
-            keys = pygame.key.get_pressed()
-
-            if keys[pygame.K_UP]:  # Tecla CIMA
-                self.player.change_speed_by(0.1)
-            
-            if keys[pygame.K_DOWN]:  # Tecla BAIXO
-                self.player.change_speed_by(-0.1)
-            
-            if keys[pygame.K_LEFT]:  # Tecla ESQUERDA
-                self.player.rotate('left')
-            
-            if keys[pygame.K_RIGHT]:  # Tecla DIREITA
-                self.player.rotate('right')
 
         if not self.paused:
             self.player.update()
