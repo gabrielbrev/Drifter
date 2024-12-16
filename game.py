@@ -6,64 +6,48 @@ import time
 
 class GameLoop:
     def __init__(self):
-        # Inicializar o pygame
         pygame.init()
 
-        # Configurações da tela
         self.WIDTH, self.HEIGHT = 1000, 600
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Drifter")
 
-        # Cores
-        self.WHITE = (255, 255, 255)
-        self.RED = (255, 255, 255)
-        self.BLACK = (0, 0, 0)
-
-        # Clock para controlar a taxa de frames
         self.clock = pygame.time.Clock()
 
-        # Criar o jogador e o alvo
         self.player = Player(self.WIDTH // 2, self.HEIGHT // 2, self.WIDTH, self.HEIGHT)
         self.target = Target(self.WIDTH, self.HEIGHT)
 
         self.bg_image = pygame.image.load('sprites/floor.jpg')
         self.bg = self.crop_bg()
 
-        # Estado de controle
         self.running = True
+        self.paused = True
         self.debug_mode = False
 
-        # Configuração da fonte para exibir texto
         self.s_font = pygame.font.Font(None, 24)
         self.m_font = pygame.font.Font(None, 36)
-        self.g_font = pygame.font.Font(None, 48)
-
-        self.paused = True
 
         self.dark_overlay = self.create_dark_overlay()
 
     def create_dark_overlay(self):
-        overlay = pygame.Surface((self.WIDTH, self.HEIGHT))  # Cria a surface do tamanho da tela
-        overlay.set_alpha(100)  # Define a transparência (0 a 255, sendo 0 totalmente transparente)
-        overlay.fill((0, 0, 0))  # Preenche a surface com preto
+        overlay = pygame.Surface((self.WIDTH, self.HEIGHT))
+        overlay.set_alpha(100)
+        overlay.fill((0, 0, 0))
 
         return overlay
 
     def crop_bg(self):
-        """Recorta a imagem de fundo para o tamanho da tela (WIDTH x HEIGHT)."""
         image_width, image_height = self.bg_image.get_size()
 
         # Calcular a posição do recorte (centro da imagem)
         x = (image_width - self.WIDTH) // 2
         y = (image_height - self.HEIGHT) // 2
 
-        # Recortar a imagem para o tamanho da tela
         cropped_bg = self.bg_image.subsurface((x, y, self.WIDTH, self.HEIGHT))
         
         return cropped_bg
 
     def draw_text(self, *texts, x=0, y=0, color=(0, 0, 0), line_spacing=5):
-        """Função para exibir várias linhas de texto na tela."""
         for text in texts:
             text_surface = self.s_font.render(text, True, color)
             self.screen.blit(text_surface, (x, y))
@@ -99,7 +83,7 @@ class GameLoop:
 
                 elif event.key == pygame.K_f:
                     self.player.drift_mode = not self.player.drift_mode
-                    
+
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
 
@@ -156,22 +140,20 @@ class GameLoop:
         self.player.change_speed_by(amount)
 
 class Player:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.angle = 0  # Ângulo de rotação em graus
-        self.speed = 0  # Velocidade inicial
+        self.angle = 0
+        self.speed = 0
         self.min_speed = 5
         self.max_speed = 20
 
-        car_sprite = pygame.image.load("sprites/car.png")  # Altere para o caminho da sua imagem
+        car_sprite = pygame.image.load("sprites/car.png")
         car_sprite = pygame.transform.scale(car_sprite, (49, 25))
         self.image = car_sprite
         self.original_image = self.image
 
         self.rect = self.image.get_rect(center=(self.x, self.y))
-        self.WIDTH = width
-        self.HEIGHT = height
 
         self.drift_mode = True
 
@@ -206,7 +188,6 @@ class Player:
         self.angle = (self.angle + amount) % 360
         self.image = pygame.transform.rotate(self.original_image, -(self.angle + self.drift_factor))
         self.rect = self.image.get_rect(center=(self.x, self.y))
-
         
     def change_speed_by(self, amount):
         if amount < -0.7:
@@ -217,6 +198,7 @@ class Player:
         self.speed = max(self.min_speed, min(self.speed + amount, self.max_speed))
 
     def move(self):
+        # Move na direcao do angulo atual
         radians = math.radians(-self.angle)
         dx = math.cos(radians) * self.speed
         dy = math.sin(radians) * self.speed
@@ -225,6 +207,7 @@ class Player:
         self.rect.center = (self.x, self.y)
 
     def cast_ray(self):
+        # Emite um raio para calcular a distancia da parede
         radians = math.radians(-self.angle)
         x, y = self.x, self.y
         while 0 < x < self.WIDTH and 0 < y < self.HEIGHT:
@@ -233,13 +216,8 @@ class Player:
         distance = math.sqrt((x - self.x) ** 2 + (y - self.y) ** 2)
         return x, y, distance
 
-    def calculate_target_distance(self, target_position):
-        dx = target_position[0] - self.x
-        dy = target_position[1] - self.y
-        distance = math.sqrt(dx**2 + dy**2)
-        return distance
-
     def calculate_angle_to_target(self, target_position):
+        # Calcula quantos graus o player deve virar para ficar de frente para o alvo (-180, 180)
         dx = target_position[0] - self.x
         dy = target_position[1] - self.y  
         target_angle = math.degrees(math.atan2(dy, dx)) % 360
@@ -249,17 +227,9 @@ class Player:
         return angle_difference
     
     def get_speedometer(self):
-        """Recorta o velocímetro da esquerda para a direita com base na velocidade atual."""
-        # Obter as dimensões da imagem do velocímetro
         width, height = self.speedometer_sprite.get_size()
-        
-        # Calcula a largura visível com base na razão de speed / max_speed
         visible_width = int((self.speed / self.max_speed) * width)
-        
-        # Define o retângulo de corte (corta da esquerda para a direita)
-        crop_rect = pygame.Rect(0, 0, visible_width, height)
-        
-        # Cria a subimagem recortada
+        crop_rect = pygame.Rect(0, 0, visible_width, height)        
         cropped_image = self.speedometer_sprite.subsurface(crop_rect)
         
         return cropped_image
@@ -303,27 +273,20 @@ class Player:
         pygame.draw.line(surface, (0, 255, 0), self.rect.center, target.rect.center)
         pygame.draw.rect(surface, (255, 255, 255), self.rect, width=1)
 
-    def update_boundaries(self, width, height):
-        self.WIDTH = width
-        self.HEIGHT = height
-
 
 class Target:
     def __init__(self, width, height, margin=100):
-        self.image = pygame.image.load("sprites/target.png")  # Altere para o caminho da sua imagem
+        self.image = pygame.image.load("sprites/target.png")
         self.image = pygame.transform.scale(self.image, (20, 20))
         self.rect = self.image.get_rect()
         
-        # Definição da margem e área de movimento
         self.MARGIN = margin
-        self.WIDTH = width - 2 * self.MARGIN  # 100% da largura menos a margem
-        self.HEIGHT = height - 2 * self.MARGIN  # 100% da altura menos a margem
+        self.WIDTH = width - 2 * self.MARGIN
+        self.HEIGHT = height - 2 * self.MARGIN
 
-        # Calcular as bordas (limites) de movimentação
         self.LEFT_BOUND = self.MARGIN
         self.TOP_BOUND = self.MARGIN
 
-        # Velocidades iniciais
         self.x_speed = random.uniform(-10, 10)
         self.y_speed = random.uniform(-10, 10)
         
@@ -341,7 +304,6 @@ class Target:
         self.rect.x += self.x_speed
         self.rect.y += self.y_speed
 
-        # Alterar direção em intervalos aleatórios
         if time.time() - self.last_direction_change > random.uniform(0.3, 1):
             self.x_speed = random.uniform(-max_speed, max_speed)
             self.y_speed = random.uniform(-max_speed, max_speed)
@@ -381,9 +343,6 @@ class Target:
         pygame.draw.rect(surface, (255, 255, 255), self.rect, width=1)
 
     def update_boundaries(self, width, height, margin=None):
-        """Atualiza os limites de largura e altura para a tela menos 'margin' de cada lado.
-        Se a largura ou a altura forem menores que o tamanho mínimo necessário, usa o tamanho da tela.
-        """
         if margin is not None:
             self.MARGIN = margin
 
@@ -396,11 +355,5 @@ class Target:
             self.WIDTH = max(self.WIDTH, self.rect.width)
             self.HEIGHT = max(self.HEIGHT, self.rect.height)
         
-        # Define as bordas de acordo com o tamanho da largura e altura
         self.LEFT_BOUND = max(0, self.MARGIN)
         self.TOP_BOUND = max(0, self.MARGIN)
-
-if __name__ == '__main__':
-    game = GameLoop()
-    while game.is_running():
-        game.tick()
