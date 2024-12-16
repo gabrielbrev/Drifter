@@ -10,9 +10,9 @@ class GameLoop:
         pygame.init()
 
         # Configurações da tela
-        self.WIDTH, self.HEIGHT = 800, 600
+        self.WIDTH, self.HEIGHT = 1000, 750
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
-        pygame.display.set_caption("Sprite Rotacionável e Movível")
+        pygame.display.set_caption("Drifter")
 
         # Cores
         self.WHITE = (255, 255, 255)
@@ -22,12 +22,8 @@ class GameLoop:
         # Clock para controlar a taxa de frames
         self.clock = pygame.time.Clock()
 
-        # Carregar imagem do sprite
-        self.sprite_image = pygame.image.load("sprites/car.png")  # Altere para o caminho da sua imagem
-        self.sprite_image = pygame.transform.scale(self.sprite_image, (49, 25))  # Redimensionar se necessário
-
         # Criar o jogador e o alvo
-        self.player = Player(self.WIDTH // 2, self.HEIGHT // 2, self.sprite_image, self.WIDTH, self.HEIGHT)
+        self.player = Player(self.WIDTH // 2, self.HEIGHT // 2, self.WIDTH, self.HEIGHT)
         self.target = Target(self.WIDTH, self.HEIGHT)
 
         # Estado de controle
@@ -52,6 +48,9 @@ class GameLoop:
                 self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
                 self.player.update_boundaries(self.WIDTH, self.HEIGHT)
                 self.target.update_boundaries(self.WIDTH, self.HEIGHT)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_f:
+                    self.player.drift_mode = not self.player.drift_mode
         
         if __name__ == '__main__':
             keys = pygame.key.get_pressed()
@@ -89,6 +88,8 @@ class GameLoop:
             f'Distancia da parede: {self.get_distance_to_wall():.0f}',
             f'Angulo do objetivo: {self.get_angle_to_target():.0f}',
             f'Velocidade atual: {self.player.speed:.0f}',
+            f'Drift factor: {self.player.drift_factor}',
+            f'Target drift factor: {self.player.target_drift_factor}',
             x=0, y=0)
 
         pygame.display.flip()
@@ -111,18 +112,24 @@ class GameLoop:
         self.player.change_speed_by(amount)
 
 class Player:
-    def __init__(self, x, y, sprite_image, width, height):
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
         self.angle = 0  # Ângulo de rotação em graus
         self.speed = 1  # Velocidade inicial
         self.min_speed = 5
         self.max_speed = 20
-        self.image = sprite_image
+
+        car_sprite = pygame.image.load("sprites/car.png")  # Altere para o caminho da sua imagem
+        car_sprite = pygame.transform.scale(car_sprite, (49, 25))
+        self.image = car_sprite
         self.original_image = self.image
+
         self.rect = self.image.get_rect(center=(self.x, self.y))
         self.WIDTH = width
         self.HEIGHT = height
+
+        self.drift_mode = True
 
         self.braked_hard = False
         self.speed_before_braking = 0
@@ -130,23 +137,31 @@ class Player:
         self.drift_factor = 0
         self.target_drift_factor = 0
 
+        self.tires_sprite = pygame.image.load("sprites/tires.png")
+        self.tires_sprite = pygame.transform.scale(self.tires_sprite, (49, 25))
+        self.drift_sprites = []
+
     def rotate(self, direction):
         amount = 5 * (1 - (self.speed - self.min_speed) / self.max_speed) ** 2 # Quando mais lento, mais vira
         if direction == 'left':
             amount *= -1
+        
+        if self.drift_mode:
+            if self.braked_hard and abs(amount) > 3:
+                self.target_drift_factor = amount * 10
+                self.drift_direction = direction
+            elif abs(amount) < 4.75:
+                self.target_drift_factor = 0
 
-        if self.braked_hard and abs(amount) > 3:
-            self.target_drift_factor = amount * 10
-            self.drift_direction = direction
-        elif abs(amount) < 4.75:
-            self.target_drift_factor = 0
-
-        if self.drift_direction != direction:
+            if self.drift_direction != direction:
+                self.target_drift_factor = 0
+        else:
             self.target_drift_factor = 0
 
         self.angle = (self.angle + amount) % 360
         self.image = pygame.transform.rotate(self.original_image, -(self.angle + self.drift_factor))
         self.rect = self.image.get_rect(center=(self.x, self.y))
+
         
     def change_speed_by(self, amount):
         if amount < -0.7:
@@ -163,14 +178,14 @@ class Player:
         dy = math.sin(radians) * self.speed
         self.x += dx
         self.y -= dy
-        if self.rect.left < 0:
-            self.x = self.rect.width // 2
-        if self.rect.right > self.WIDTH:
-            self.x = self.WIDTH - self.rect.width // 2
-        if self.rect.top < 0:
-            self.y = self.rect.height // 2
-        if self.rect.bottom > self.HEIGHT:
-            self.y = self.HEIGHT - self.rect.height // 2
+        # if self.rect.left < 0:
+        #     self.x = self.rect.width // 2
+        # if self.rect.right > self.WIDTH:
+        #     self.x = self.WIDTH - self.rect.width // 2
+        # if self.rect.top < 0:
+        #     self.y = self.rect.height // 2
+        # if self.rect.bottom > self.HEIGHT:
+        #     self.y = self.HEIGHT - self.rect.height // 2
         self.rect.center = (self.x, self.y)
 
     def cast_ray(self):
@@ -205,7 +220,26 @@ class Player:
         elif self.target_drift_factor > self.drift_factor:
             self.drift_factor += 3
 
-    def draw(self, surface):
+        if self.drift_factor:
+            tire_image = pygame.transform.rotate(self.tires_sprite, -(self.angle + self.drift_factor))
+            self.drift_sprites.append({
+                'sprite': tire_image,
+                'dest': self.rect.topleft,
+                'time': time.time()
+            })
+
+        dead_drift_sprites = []
+        for s in self.drift_sprites:
+            if time.time() - s['time'] > 2:
+                dead_drift_sprites.append(s)
+            else:
+                break
+        for s in dead_drift_sprites:
+            self.drift_sprites.remove(s)
+
+    def draw(self, surface: pygame.Surface):
+        for s in self.drift_sprites:
+            surface.blit(s['sprite'], s['dest'])
         surface.blit(self.image, self.rect.topleft)
 
     def draw_debug(self, surface, target):
