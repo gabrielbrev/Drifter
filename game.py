@@ -29,6 +29,8 @@ class GameLoop:
 
         self.dark_overlay = self.create_dark_overlay()
 
+        self.take_snapshot = False
+
     def create_dark_overlay(self):
         overlay = pygame.Surface((self.WIDTH, self.HEIGHT))
         overlay.set_alpha(100)
@@ -75,14 +77,18 @@ class GameLoop:
                 self.dark_overlay = self.create_dark_overlay()
 
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_t:
-                    self.target.cycle_mode()
-
-                elif event.key == pygame.K_d:
+                if event.key == pygame.K_d:
                     self.debug_mode = not self.debug_mode
 
                 elif event.key == pygame.K_f:
                     self.player.drift_mode = not self.player.drift_mode
+
+                elif event.key == pygame.K_r:
+                    if self.paused:
+                        self.take_snapshot = True
+
+                elif event.key == pygame.K_t:
+                    self.target.cycle_mode()
 
                 elif event.key == pygame.K_SPACE:
                     self.paused = not self.paused
@@ -111,14 +117,24 @@ class GameLoop:
             
         if self.paused:
             paused_text = self.m_font.render('simulação pausada', True, (255, 255, 255))
+            snapshot_text = self.s_font.render('R para gerar relatório', True, (255, 255, 255))
+
             self.screen.blit(self.dark_overlay, (0, 0))
             self.screen.blit(paused_text, (self.WIDTH / 2 - paused_text.get_width() / 2, self.HEIGHT / 2 - paused_text.get_height() / 2))
+            self.screen.blit(snapshot_text, (self.WIDTH / 2 - snapshot_text.get_width() / 2, self.HEIGHT - snapshot_text.get_height()))
 
         pygame.display.flip()
         self.clock.tick(60)
 
     def is_running(self):
         return self.running
+    
+    def requested_snapshot(self):
+        # Considera que o retorno de true foi identificado e a snapshot foi tirada
+        if self.take_snapshot:
+            self.take_snapshot = False
+            return True
+        return False
 
     def get_distance_to_wall(self):
         _, _, distance = self.player.cast_ray()
@@ -140,9 +156,11 @@ class GameLoop:
         self.player.change_speed_by(amount)
 
 class Player:
-    def __init__(self, x, y):
+    def __init__(self, x, y, width, height):
         self.x = x
         self.y = y
+        self.WIDTH = width
+        self.HEIGHT = height
         self.angle = 0
         self.speed = 0
         self.min_speed = 5
@@ -161,6 +179,7 @@ class Player:
         self.drift_direction = ''
         self.drift_factor = 0
         self.target_drift_factor = 0
+        self.drift_count = 0
 
         self.tires_sprite = pygame.image.load("sprites/tires.png")
         self.tires_sprite = pygame.transform.scale(self.tires_sprite, (49, 25))
@@ -177,6 +196,7 @@ class Player:
             if self.braked_hard and abs(amount) > 3:
                 self.target_drift_factor = amount * 10
                 self.drift_direction = direction
+                self.drift_count += 1
             elif abs(amount) < 4.75:
                 self.target_drift_factor = 0
 
@@ -184,6 +204,11 @@ class Player:
                 self.target_drift_factor = 0
         else:
             self.target_drift_factor = 0
+            if len(self.drift_sprites) > 0:
+                now = time.time()
+                for s in self.drift_sprites:
+                    if not s['time']:
+                        s['time'] = now
 
         self.angle = (self.angle + amount) % 360
         self.image = pygame.transform.rotate(self.original_image, -(self.angle + self.drift_factor))
@@ -240,25 +265,37 @@ class Player:
         if self.speed > 7.5: 
             self.target_drift_factor = 0
 
+        # Update drift factor
         if self.target_drift_factor < self.drift_factor:
             self.drift_factor -= 2
         elif self.target_drift_factor > self.drift_factor:
             self.drift_factor += 2
 
+        # Create drift marks
         if self.drift_factor:
             tire_image = pygame.transform.rotate(self.tires_sprite, -(self.angle + self.drift_factor))
             self.drift_sprites.append({
                 'sprite': tire_image,
                 'dest': self.rect.topleft,
-                'time': time.time()
+                'time': 0,
+                'count': self.drift_count
             })
 
+        # Update drift sprites
         dead_drift_sprites = []
         for s in self.drift_sprites:
-            if time.time() - s['time'] > 5:
-                dead_drift_sprites.append(s)
-            else:
-                break
+            now = time.time()
+
+            if s['time']:
+                time_elapsed = time.time() - s['time']
+                if time_elapsed > 5:
+                    dead_drift_sprites.append(s)
+                elif time_elapsed > 1:
+                    s['sprite'].set_alpha(255 * (1 - time_elapsed / 5))
+
+            elif self.drift_count - s['count'] > 2:
+                s['time'] = now
+
         for s in dead_drift_sprites:
             self.drift_sprites.remove(s)
 
@@ -273,6 +310,9 @@ class Player:
         pygame.draw.line(surface, (0, 255, 0), self.rect.center, target.rect.center)
         pygame.draw.rect(surface, (255, 255, 255), self.rect, width=1)
 
+    def update_boundaries(self, width, height):
+        self.WIDTH = width
+        self.HEIGHT = height
 
 class Target:
     def __init__(self, width, height, margin=100):
@@ -310,9 +350,11 @@ class Target:
             self.last_direction_change = time.time()
 
         if self.rect.left < self.LEFT_BOUND or self.rect.right > self.LEFT_BOUND + self.WIDTH:
+            self.rect.x = min(self.LEFT_BOUND + self.WIDTH, max(self.rect.x, self.LEFT_BOUND))
             self.x_speed = -self.x_speed
 
         if self.rect.top < self.TOP_BOUND or self.rect.bottom > self.TOP_BOUND + self.HEIGHT:
+            self.rect.y = min(self.TOP_BOUND + self.HEIGHT, max(self.rect.y, self.TOP_BOUND))
             self.y_speed = -self.y_speed
 
     def set_position(self, x, y):
