@@ -12,11 +12,11 @@ class FuzzyController:
         self.virar = ctrl.Consequent(np.arange(-1, 1.1, 0.5), 'virar')
         self.velocidade = ctrl.Consequent(np.arange(-2.5, 0.3, 0.01), 'velocidade')
 
-        self._define_membership_functions()
+        self._definir_funcoes_pertinencia()
         self._definir_regras()
         self._criar_control_system()
 
-    def _define_membership_functions(self):
+    def _definir_funcoes_pertinencia(self):
         self.distancia_borda['perto'] = fuzz.trapmf(self.distancia_borda.universe, [0, 0, 75, 100])
         self.distancia_borda['medio'] = fuzz.trimf(self.distancia_borda.universe, [75, 100, 150])
         self.distancia_borda['longe'] = fuzz.trapmf(self.distancia_borda.universe, [100, 150, np.inf, np.inf])
@@ -39,7 +39,6 @@ class FuzzyController:
         self.virar['direita'] = fuzz.trimf(self.virar.universe, [0, 1, 1])
 
     def _definir_regras(self):
-        """Define as regras fuzzy para controlar a lógica."""
         self.rules_virar = [
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_borda['perto'], self.virar['esquerda']),
             ctrl.Rule(self.curva['fechada_esq'] & self.distancia_borda['medio'], self.virar['esquerda']),
