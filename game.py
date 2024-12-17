@@ -27,16 +27,7 @@ class GameLoop:
         self.s_font = pygame.font.Font(None, 24)
         self.m_font = pygame.font.Font(None, 36)
 
-        self.dark_overlay = self.create_dark_overlay()
-
         self.take_snapshot = False
-
-    def create_dark_overlay(self):
-        overlay = pygame.Surface((self.WIDTH, self.HEIGHT))
-        overlay.set_alpha(100)
-        overlay.fill((0, 0, 0))
-
-        return overlay
 
     def crop_bg(self):
         image_width, image_height = self.bg_image.get_size()
@@ -74,7 +65,6 @@ class GameLoop:
                 self.target.update_boundaries(self.WIDTH, self.HEIGHT)
 
                 self.bg = self.crop_bg()
-                self.dark_overlay = self.create_dark_overlay()
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_d:
@@ -119,9 +109,8 @@ class GameLoop:
             paused_text = self.m_font.render('simulação pausada', True, (255, 255, 255))
             snapshot_text = self.s_font.render('R para gerar relatório', True, (255, 255, 255))
 
-            self.screen.blit(self.dark_overlay, (0, 0))
-            self.screen.blit(paused_text, (self.WIDTH / 2 - paused_text.get_width() / 2, self.HEIGHT / 2 - paused_text.get_height() / 2))
-            self.screen.blit(snapshot_text, (self.WIDTH / 2 - snapshot_text.get_width() / 2, self.HEIGHT - snapshot_text.get_height()))
+            self.screen.blit(paused_text, (self.WIDTH / 2 - paused_text.get_width() / 2, 15))
+            self.screen.blit(snapshot_text, (self.WIDTH / 2 - snapshot_text.get_width() / 2, self.HEIGHT - snapshot_text.get_height() - 7))
 
         pygame.display.flip()
         self.clock.tick(60)
@@ -211,8 +200,6 @@ class Player:
                         s['time'] = now
 
         self.angle = (self.angle + amount) % 360
-        self.image = pygame.transform.rotate(self.original_image, -(self.angle + self.drift_factor))
-        self.rect = self.image.get_rect(center=(self.x, self.y))
         
     def change_speed_by(self, amount):
         if amount < -0.7:
@@ -270,6 +257,10 @@ class Player:
             self.drift_factor -= 2
         elif self.target_drift_factor > self.drift_factor:
             self.drift_factor += 2
+
+        # Update sprite according to drift factor
+        self.image = pygame.transform.rotate(self.original_image, -(self.angle + self.drift_factor))
+        self.rect = self.image.get_rect(center=(self.x, self.y))
 
         # Create drift marks
         if self.drift_factor:
